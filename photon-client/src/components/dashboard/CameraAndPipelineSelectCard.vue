@@ -112,7 +112,8 @@ const validNewPipelineTypes = computed(() => {
     { name: "Reflective", value: WebsocketPipelineType.Reflective },
     { name: "Colored Shape", value: WebsocketPipelineType.ColoredShape },
     { name: "AprilTag", value: WebsocketPipelineType.AprilTag },
-    { name: "ArUco", value: WebsocketPipelineType.Aruco }
+    { name: "ArUco", value: WebsocketPipelineType.Aruco },
+    { name: "AprilTag (NAPA)", value: WebsocketPipelineType.Napa }
   ];
   if (useSettingsStore().general.supportedBackends.length > 0) {
     pipelineTypes.push({ name: "Object Detection", value: WebsocketPipelineType.ObjectDetection });
@@ -150,7 +151,8 @@ const pipelineTypesWrapper = computed<{ name: string; value: number }[]>(() => {
     { name: "Reflective", value: WebsocketPipelineType.Reflective },
     { name: "Colored Shape", value: WebsocketPipelineType.ColoredShape },
     { name: "AprilTag", value: WebsocketPipelineType.AprilTag },
-    { name: "ArUco", value: WebsocketPipelineType.Aruco }
+    { name: "ArUco", value: WebsocketPipelineType.Aruco },
+    { name: "AprilTag (NAPA)", value: WebsocketPipelineType.Napa }
   ];
   if (useSettingsStore().general.supportedBackends.length > 0) {
     pipelineTypes.push({ name: "Object Detection", value: WebsocketPipelineType.ObjectDetection });
@@ -215,6 +217,9 @@ useCameraSettingsStore().$subscribe((mutation, state) => {
       break;
     case PipelineType.ObjectDetection:
       pipelineType.value = WebsocketPipelineType.ObjectDetection;
+      break;
+    case PipelineType.Napa:
+      pipelineType.value = WebsocketPipelineType.Napa;
       break;
   }
 });

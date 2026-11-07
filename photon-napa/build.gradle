@@ -1,0 +1,88 @@
+// NAPA (https://github.com/zwatx/NAPA) AprilTag detector, built as a JNI library for photon-core.
+// NAPA is GPL-3.0-only. It's kept out of photon-targeting so it never ships in the PhotonLib vendordep.
+
+ext {
+    nativeName = "napa"
+}
+
+apply plugin: 'cpp'
+apply plugin: 'c'
+apply plugin: 'java-library'
+apply plugin: 'maven-publish'
+apply plugin: 'org.wpilib.NativeUtils'
+apply plugin: 'org.photonvision.tools.WpilibTools'
+apply plugin: 'org.wpilib.GradleJni'
+
+ext.licenseFile = file("$rootDir/LICENSE")
+apply from: "${rootDir}/shared/config.gradle"
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(25)
+    }
+    sourceCompatibility = JavaVersion.VERSION_25
+    targetCompatibility = JavaVersion.VERSION_25
+}
+
+jar {
+    from licenseFile
+    from("${projectDir}/src/main/native/napa") {
+        include 'LICENSE', 'NOTICE', 'THIRD_PARTY_NOTICES'
+        into 'NAPA'
+    }
+}
+
+model {
+    components {
+        "${nativeName}JNI"(JniNativeLibrarySpec) {
+            javaCompileTasks << compileJava
+            jniCrossCompileOptions << JniCrossCompileOptions(nativeUtils.wpi.platforms.systemcore)
+            jniCrossCompileOptions << JniCrossCompileOptions(nativeUtils.wpi.platforms.linuxarm64)
+
+            sources {
+                c {
+                    source {
+                        srcDirs 'src/main/native/napa'
+                        include '**/*.c'
+                    }
+                    exportedHeaders {
+                        srcDirs 'src/main/native/napa'
+                        include '**/*.h'
+                    }
+                }
+                cpp {
+                    source {
+                        srcDirs 'src/main/native/jni'
+                        include '**/*.cpp'
+                    }
+                    exportedHeaders {
+                        srcDirs 'src/main/native/napa'
+                        include '**/*.h'
+                    }
+                }
+            }
+
+            binaries.all {
+                // NAPA is vendored third-party C; don't hold it to our warnings-as-errors policy
+                if (it.toolChain instanceof GccCompatibleToolChain) {
+                    it.cCompiler.args << '-Wno-error' << '-O3' << '-fno-wrapv'
+                    it.linker.args << '-lm'
+                } else if (it.toolChain instanceof VisualCpp) {
+                    it.cCompiler.args << '/WX-' << '/O2'
+                }
+            }
+
+            nativeUtils.useRequiredLibrary(it, "opencv_shared")
+        }
+    }
+}
+
+// Expose the built JNI library to photon-core the same way photon-targeting does, so it is
+// extracted into photon-core's resources and found by CombinedRuntimeLoader.
+configurations.create('wpilibNatives')
+
+model {
+    publishing {
+        createComponentZipTasks($.components, ["${nativeName}JNI"], "_GROUP_org_photonvision_${nativeName}_ID_${nativeName}-cpp_CLS", Zip, project, includeStandardZipFormat)
+    }
+}

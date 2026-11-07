@@ -11,6 +11,7 @@ pluginManagement {
 }
 
 include 'photon-targeting'
+include 'photon-napa'
 include 'photon-core'
 include 'photon-server'
 include 'photon-lib'

@@ -20,6 +20,8 @@ nativeTasks.addToSourceSetResources(sourceSets.main)
 
 dependencies {
     wpilibNatives project(path: ':photon-targeting', configuration: 'wpilibNatives')
+    wpilibNatives project(path: ':photon-napa', configuration: 'wpilibNatives')
+    implementation project(':photon-napa')
     wpilibNatives wpilibTools.deps.wpilib("wpimath")
     wpilibNatives wpilibTools.deps.wpilib("wpinet")
     wpilibNatives wpilibTools.deps.wpilib("wpiutil")

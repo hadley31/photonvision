@@ -45,7 +45,8 @@ const resetCurrentBuffer = () => {
               <th
                 v-if="
                   currentPipelineSettings.pipelineType === PipelineType.AprilTag ||
-                  currentPipelineSettings.pipelineType === PipelineType.Aruco
+                  currentPipelineSettings.pipelineType === PipelineType.Aruco ||
+                  currentPipelineSettings.pipelineType === PipelineType.Napa
                 "
                 class="text-center text-white"
               >
@@ -69,7 +70,8 @@ const resetCurrentBuffer = () => {
               <template
                 v-if="
                   (currentPipelineSettings.pipelineType === PipelineType.AprilTag ||
-                    currentPipelineSettings.pipelineType === PipelineType.Aruco) &&
+                    currentPipelineSettings.pipelineType === PipelineType.Aruco ||
+                    currentPipelineSettings.pipelineType === PipelineType.Napa) &&
                   useCameraSettingsStore().currentPipelineSettings.solvePNPEnabled
                 "
               >
@@ -86,7 +88,8 @@ const resetCurrentBuffer = () => {
               <td
                 v-if="
                   currentPipelineSettings.pipelineType === PipelineType.AprilTag ||
-                  currentPipelineSettings.pipelineType === PipelineType.Aruco
+                  currentPipelineSettings.pipelineType === PipelineType.Aruco ||
+                  currentPipelineSettings.pipelineType === PipelineType.Napa
                 "
                 class="text-center"
               >
@@ -118,7 +121,8 @@ const resetCurrentBuffer = () => {
               <template
                 v-if="
                   (currentPipelineSettings.pipelineType === PipelineType.AprilTag ||
-                    currentPipelineSettings.pipelineType === PipelineType.Aruco) &&
+                    currentPipelineSettings.pipelineType === PipelineType.Aruco ||
+                    currentPipelineSettings.pipelineType === PipelineType.Napa) &&
                   useCameraSettingsStore().currentPipelineSettings.solvePNPEnabled
                 "
               >
@@ -134,7 +138,8 @@ const resetCurrentBuffer = () => {
     <v-container
       v-if="
         (currentPipelineSettings.pipelineType === PipelineType.AprilTag ||
-          currentPipelineSettings.pipelineType === PipelineType.Aruco) &&
+          currentPipelineSettings.pipelineType === PipelineType.Aruco ||
+          currentPipelineSettings.pipelineType === PipelineType.Napa) &&
         currentPipelineSettings.doMultiTarget &&
         useCameraSettingsStore().isCurrentVideoFormatCalibrated &&
         useCameraSettingsStore().currentPipelineSettings.solvePNPEnabled

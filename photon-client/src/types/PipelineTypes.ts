@@ -11,7 +11,8 @@ export enum PipelineType {
   ColoredShape = 4,
   AprilTag = 5,
   Aruco = 6,
-  ObjectDetection = 7
+  ObjectDetection = 7,
+  Napa = 8
 }
 
 export enum AprilTagFamily {
@@ -345,6 +346,41 @@ export const DefaultArucoPipelineSettings: ArucoPipelineSettings = {
   doSingleTargetAlways: false
 };
 
+export interface NapaPipelineSettings extends PipelineSettings {
+  pipelineType: PipelineType.Napa;
+  tagFamily: AprilTagFamily;
+  minTagPx: number;
+  minContrast: number;
+  minBorderCells: number;
+  sharpening: number;
+  hammingDist: number;
+  decisionMargin: number;
+  numIterations: number;
+  doMultiTarget: boolean;
+  doSingleTargetAlways: boolean;
+}
+export type ConfigurableNapaPipelineSettings = Partial<Omit<NapaPipelineSettings, "pipelineType" | "hammingDist">> &
+  ConfigurablePipelineSettings;
+export const DefaultNapaPipelineSettings: NapaPipelineSettings = {
+  ...DefaultPipelineSettings,
+  cameraGain: 75,
+  targetModel: TargetModel.AprilTag6p5in_36h11,
+  ledMode: false,
+  outputMaximumTargets: 127,
+  cameraExposureRaw: 20,
+  pipelineType: PipelineType.Napa,
+  tagFamily: AprilTagFamily.Family36h11,
+  minTagPx: 32,
+  minContrast: 20,
+  minBorderCells: 22,
+  sharpening: 25,
+  hammingDist: 0,
+  decisionMargin: 35,
+  numIterations: 40,
+  doMultiTarget: false,
+  doSingleTargetAlways: false
+};
+
 export interface ObjectDetectionPipelineSettings extends PipelineSettings {
   pipelineType: PipelineType.ObjectDetection;
   confidence: number;
@@ -397,6 +433,7 @@ export type ActivePipelineSettings =
   | ColoredShapePipelineSettings
   | AprilTagPipelineSettings
   | ArucoPipelineSettings
+  | NapaPipelineSettings
   | ObjectDetectionPipelineSettings
   | Calibration3dPipelineSettings;
 
@@ -405,5 +442,6 @@ export type ActiveConfigurablePipelineSettings =
   | ConfigurableColoredShapePipelineSettings
   | ConfigurableAprilTagPipelineSettings
   | ConfigurableArucoPipelineSettings
+  | ConfigurableNapaPipelineSettings
   | ConfigurableObjectDetectionPipelineSettings
   | ConfigurableCalibration3dPipelineSettings;
