@@ -39,6 +39,24 @@ public final class NapaJNI {
     public static final int kCornersOffset = 5;
     public static final int kHomographyOffset = 13;
 
+    /** Hamming value of a tag NAPA recognised as a whole picture (soft decoding), not bit by bit. */
+    public static final int kSoftDecoded = -1;
+
+    /** {@link #detect} option: also soft-decode tiny or partly flat tags (tag36h11 only). */
+    public static final int kOptionSoftDecode = 1;
+
+    /** {@link #detect} option: re-align blurred tags' corners after decoding (tag36h11 only). */
+    public static final int kOptionAlignCorners = 2;
+
+    /** {@link #setLens} model: no lens; sides are fitted in pixels. */
+    public static final int kLensNone = 0;
+
+    /** {@link #setLens} model: OpenCV's standard (Brown-Conrady) distortion model. */
+    public static final int kLensBrownConrady = 1;
+
+    /** {@link #setLens} model: OpenCV's fisheye model. */
+    public static final int kLensFisheye = 2;
+
     /**
      * Create a detector for one tag family.
      *
@@ -68,7 +86,14 @@ public final class NapaJNI {
      * @param minContrast Grey levels between tag black and the white quiet zone (1-255)
      * @param minBorderCells Dark border cells required out of 28 (0-28)
      * @param sharpeningX100 Cell sharpening strength x100 (0-100)
-     * @return Detections, {@link #kDetectionStride} doubles each; null on invalid input
+     * @param splitTouching 0 off; 1 also decode dark shapes touching others only at a corner (tag
+     *     grids, checkerboards); 2 only on frames where a decoded tag touches others at its corners
+     * @param recoverShadows Also run NAPA's shadow recovery pass (exact-code matches only)
+     * @param shadowMinTagPx Shadow recovery's minimum tag size: 0 for full sensitivity, otherwise
+     *     minTagPx through 30000
+     * @param options Any of {@link #kOptionSoftDecode} and {@link #kOptionAlignCorners}; non-zero
+     *     options require a tag36h11 detector
+     * @return Detections, {@link #kDetectionStride} doubles each
      */
     public static native double[] detect(
             long handle,
@@ -77,5 +102,45 @@ public final class NapaJNI {
             int maxHamming,
             int minContrast,
             int minBorderCells,
-            int sharpeningX100);
+            int sharpeningX100,
+            int splitTouching,
+            boolean recoverShadows,
+            int shadowMinTagPx,
+            int options);
+
+    /**
+     * Set detector-wide options that apply to every later {@link #detect} call.
+     *
+     * @param handle The detector handle
+     * @param threads Threads one detection may use, 1-16. Results are identical at every count
+     * @param tagShape 0 for no preference, 1 for tall tags (turned about the vertical axis), 2 for
+     *     wide tags (camera on its side)
+     * @param regrowSmallTags Retry small candidates whose thin border came apart at full resolution
+     * @return 0 on success, -1 for an invalid value, -2 if threads couldn't be started
+     */
+    public static native int configure(
+            long handle, int threads, int tagShape, boolean regrowSmallTags);
+
+    /**
+     * Set the camera's tone curve as a gamma, 1 (linear, no change) to 4. tag36h11 detectors only.
+     *
+     * @param handle The detector handle
+     * @param gamma The camera gamma
+     * @return 0 on success, -1 for an invalid value or a family other than tag36h11
+     */
+    public static native int setCameraGamma(long handle, double gamma);
+
+    /**
+     * Set the camera's lens from its calibration, in OpenCV's conventions. Sides are then fitted as
+     * straight lines through the lens; corners are still returned in (distorted) pixels.
+     *
+     * @param handle The detector handle
+     * @param model {@link #kLensNone}, {@link #kLensBrownConrady} or {@link #kLensFisheye}
+     * @param intrinsics fx, fy, cx, cy, skew (ignored for kLensNone, may be null)
+     * @param coefficients OpenCV distortion coefficients: 4, 5, 8, 12 or 14 for Brown-Conrady, 4 for
+     *     fisheye (ignored for kLensNone, may be null)
+     * @return 0 on success, -1 for invalid input
+     */
+    public static native int setLens(
+            long handle, int model, double[] intrinsics, double[] coefficients);
 }

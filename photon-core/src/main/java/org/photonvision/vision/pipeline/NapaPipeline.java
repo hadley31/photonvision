@@ -27,8 +27,10 @@ import org.photonvision.common.logging.LogGroup;
 import org.photonvision.common.logging.Logger;
 import org.photonvision.common.util.math.MathUtils;
 import org.photonvision.estimation.TargetModel;
+import org.photonvision.napa.NapaJNI;
 import org.photonvision.targeting.MultiTargetPNPResult;
 import org.photonvision.vision.apriltag.AprilTagFamily;
+import org.photonvision.vision.calibration.CameraLensModel;
 import org.photonvision.vision.frame.Frame;
 import org.photonvision.vision.frame.FrameThresholdType;
 import org.photonvision.vision.pipe.CVPipe.CVPipeResult;
@@ -39,6 +41,7 @@ import org.photonvision.vision.pipe.impl.MultiTargetPNPPipe;
 import org.photonvision.vision.pipe.impl.MultiTargetPNPPipe.MultiTargetPNPPipeParams;
 import org.photonvision.vision.pipe.impl.NapaDetectionPipe;
 import org.photonvision.vision.pipe.impl.NapaDetectionPipe.NapaDetectionPipeParams;
+import org.photonvision.vision.pipe.impl.NapaDetectionPipe.NapaLens;
 import org.photonvision.vision.pipeline.result.CVPipelineResult;
 import org.photonvision.vision.target.TrackedTarget;
 import org.photonvision.vision.target.TrackedTarget.TargetCalculationParameters;
@@ -61,6 +64,7 @@ public class NapaPipeline extends CVPipeline<CVPipelineResult, NapaPipelineSetti
 
     private final NapaDetectionPipe napaDetectionPipe = new NapaDetectionPipe();
     private boolean warnedUnavailable = false;
+    private boolean warnedLensUnsupported = false;
     private final AprilTagPoseEstimatorPipe singleTagPoseEstimatorPipe =
             new AprilTagPoseEstimatorPipe();
     private final MultiTargetPNPPipe multiTagPNPPipe = new MultiTargetPNPPipe();
@@ -98,7 +102,17 @@ public class NapaPipeline extends CVPipeline<CVPipelineResult, NapaPipelineSetti
                             settings.hammingDist,
                             settings.minContrast,
                             settings.minBorderCells,
-                            settings.sharpening));
+                            settings.sharpening,
+                            settings.splitTouching,
+                            settings.recoverShadows,
+                            settings.shadowMinTagPx,
+                            settings.softDecode,
+                            settings.alignCorners,
+                            settings.threads,
+                            settings.tagShape,
+                            settings.regrowSmallTags,
+                            settings.cameraGamma,
+                            settings.useLensModel ? napaLens() : null));
         }
 
         if (frameStaticProperties.cameraCalibration != null) {
@@ -121,6 +135,32 @@ public class NapaPipeline extends CVPipeline<CVPipelineResult, NapaPipelineSetti
                         new MultiTargetPNPPipeParams(frameStaticProperties.cameraCalibration, field, tagModel));
             }
         }
+    }
+
+    /**
+     * The calibrated lens in the form NAPA takes, or null if there's no usable calibration. NAPA only
+     * understands OpenCV's lens models, so mrcal calibrations fall back to fitting in pixels.
+     */
+    private NapaLens napaLens() {
+        var calibration = frameStaticProperties.cameraCalibration;
+        if (calibration == null) return null;
+        if (calibration.lensmodel != null
+                && calibration.lensmodel != CameraLensModel.LENSMODEL_OPENCV) {
+            if (!warnedLensUnsupported) {
+                logger.warn(
+                        "NAPA lens model needs an OpenCV calibration, not "
+                                + calibration.lensmodel
+                                + "; fitting in pixels");
+                warnedLensUnsupported = true;
+            }
+            return null;
+        }
+        double[] k = calibration.getIntrinsicsArr();
+        double[] d = calibration.getDistCoeffsArr();
+        if (k == null || k.length != 9 || d == null) return null;
+        // Row-major K: fx skew cx / 0 fy cy / 0 0 1
+        return new NapaLens(
+                NapaJNI.kLensBrownConrady, new double[] {k[0], k[4], k[2], k[5], k[1]}, d.clone());
     }
 
     @Override

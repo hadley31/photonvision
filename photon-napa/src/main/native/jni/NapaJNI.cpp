@@ -95,8 +95,9 @@ JNIEXPORT void JNICALL Java_org_photonvision_napa_NapaJNI_destroy(JNIEnv*, jclas
 
 JNIEXPORT jdoubleArray JNICALL Java_org_photonvision_napa_NapaJNI_detect(
     JNIEnv* env, jclass, jlong handlePtr, jlong matAddr, jint minTagPx,
-    jint maxHamming, jint minContrast, jint minBorderCells,
-    jint sharpeningX100) {
+    jint maxHamming, jint minContrast, jint minBorderCells, jint sharpeningX100,
+    jint splitTouching, jboolean recoverShadows, jint shadowMinTagPx,
+    jint options) {
   auto* handle = reinterpret_cast<NapaHandle*>(handlePtr);
   auto* mat = reinterpret_cast<cv::Mat*>(matAddr);
   if (handle == nullptr || mat == nullptr) {
@@ -118,11 +119,26 @@ JNIEXPORT jdoubleArray JNICALL Java_org_photonvision_napa_NapaJNI_detect(
   params.min_contrast = minContrast;
   params.min_border_cells = minBorderCells;
   params.sharpening_x100 = sharpeningX100;
+  params.split_touching = splitTouching;
 
-  int n = napa_detect(handle->detector, mat->data, mat->cols, mat->rows,
-                      static_cast<int>(mat->step[0]), &params,
-                      handle->buffer.data(),
-                      static_cast<int>(handle->buffer.size()));
+  const int stride = static_cast<int>(mat->step[0]);
+  const int maxOut = static_cast<int>(handle->buffer.size());
+  int n;
+  if (options != 0) {
+    // Soft decoding / corner alignment (tag36h11 only), optionally after shadow recovery
+    n = napa_detect_options(handle->detector, mat->data, mat->cols, mat->rows,
+                            stride, &params, handle->buffer.data(), maxOut,
+                            recoverShadows ? 1 : 0, shadowMinTagPx,
+                            static_cast<unsigned>(options));
+  } else if (recoverShadows) {
+    n = napa_detect_shadows_configured(handle->detector, mat->data, mat->cols,
+                                       mat->rows, stride, &params,
+                                       handle->buffer.data(), maxOut,
+                                       shadowMinTagPx);
+  } else {
+    n = napa_detect(handle->detector, mat->data, mat->cols, mat->rows, stride,
+                    &params, handle->buffer.data(), maxOut);
+  }
   if (n == -1) {
     ThrowIllegalArgument(env, "NAPA: invalid image or detector parameters");
     return nullptr;
@@ -173,6 +189,61 @@ JNIEXPORT jdoubleArray JNICALL Java_org_photonvision_napa_NapaJNI_detect(
   env->SetDoubleArrayRegion(result, 0, static_cast<jsize>(out.size()),
                             out.data());
   return result;
+}
+
+JNIEXPORT jint JNICALL Java_org_photonvision_napa_NapaJNI_configure(
+    JNIEnv* env, jclass, jlong handlePtr, jint threads, jint tagShape,
+    jboolean regrowSmallTags) {
+  auto* handle = reinterpret_cast<NapaHandle*>(handlePtr);
+  if (handle == nullptr) {
+    ThrowIllegalArgument(env, "NAPA: null detector handle");
+    return -1;
+  }
+  int ret = napa_set_threads(handle->detector, threads);
+  if (ret != 0) {
+    return ret;
+  }
+  ret = napa_set_tag_shape(handle->detector, tagShape);
+  if (ret != 0) {
+    return ret;
+  }
+  return napa_set_regrow_small_tags(handle->detector, regrowSmallTags ? 1 : 0);
+}
+
+JNIEXPORT jint JNICALL Java_org_photonvision_napa_NapaJNI_setCameraGamma(
+    JNIEnv* env, jclass, jlong handlePtr, jdouble gamma) {
+  auto* handle = reinterpret_cast<NapaHandle*>(handlePtr);
+  if (handle == nullptr) {
+    ThrowIllegalArgument(env, "NAPA: null detector handle");
+    return -1;
+  }
+  return napa_set_camera_gamma(handle->detector, gamma);
+}
+
+JNIEXPORT jint JNICALL Java_org_photonvision_napa_NapaJNI_setLens(
+    JNIEnv* env, jclass, jlong handlePtr, jint model, jdoubleArray intrinsics,
+    jdoubleArray coefficients) {
+  auto* handle = reinterpret_cast<NapaHandle*>(handlePtr);
+  if (handle == nullptr) {
+    ThrowIllegalArgument(env, "NAPA: null detector handle");
+    return -1;
+  }
+  if (model == NAPA_LENS_NONE) {
+    return napa_set_lens(handle->detector, NAPA_LENS_NONE, nullptr, nullptr, 0);
+  }
+  if (intrinsics == nullptr || coefficients == nullptr ||
+      env->GetArrayLength(intrinsics) != 5) {
+    return -1;
+  }
+  const jsize count = env->GetArrayLength(coefficients);
+  if (count > 14) {
+    return -1;
+  }
+  std::array<double, 5> k{};
+  std::array<double, 14> d{};
+  env->GetDoubleArrayRegion(intrinsics, 0, 5, k.data());
+  env->GetDoubleArrayRegion(coefficients, 0, count, d.data());
+  return napa_set_lens(handle->detector, model, k.data(), d.data(), count);
 }
 
 }  // extern "C"

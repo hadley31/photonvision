@@ -353,6 +353,16 @@ export interface NapaPipelineSettings extends PipelineSettings {
   minContrast: number;
   minBorderCells: number;
   sharpening: number;
+  threads: number;
+  splitTouching: number;
+  recoverShadows: boolean;
+  shadowMinTagPx: number;
+  softDecode: boolean;
+  alignCorners: boolean;
+  useLensModel: boolean;
+  cameraGamma: number;
+  tagShape: number;
+  regrowSmallTags: boolean;
   hammingDist: number;
   decisionMargin: number;
   numIterations: number;
@@ -374,6 +384,16 @@ export const DefaultNapaPipelineSettings: NapaPipelineSettings = {
   minContrast: 20,
   minBorderCells: 22,
   sharpening: 25,
+  threads: 1,
+  splitTouching: 0,
+  recoverShadows: false,
+  shadowMinTagPx: 0,
+  softDecode: false,
+  alignCorners: false,
+  useLensModel: false,
+  cameraGamma: 1,
+  tagShape: 0,
+  regrowSmallTags: false,
   hammingDist: 0,
   decisionMargin: 35,
   numIterations: 40,
