@@ -111,8 +111,13 @@ JNIEXPORT jdoubleArray JNICALL Java_org_photonvision_napa_NapaJNI_detect(
     return nullptr;
   }
 
-  napa_params params{minTagPx, maxHamming, minContrast, minBorderCells,
-                     sharpeningX100};
+  // Zero everything first so fields NAPA adds later get their defaults (0)
+  napa_params params{};
+  params.min_tag_px = minTagPx;
+  params.max_hamming = maxHamming;
+  params.min_contrast = minContrast;
+  params.min_border_cells = minBorderCells;
+  params.sharpening_x100 = sharpeningX100;
 
   int n = napa_detect(handle->detector, mat->data, mat->cols, mat->rows,
                       static_cast<int>(mat->step[0]), &params,
